@@ -1,0 +1,36 @@
+plugins {
+    id 'java'
+    id 'application' // Provides the run task
+}
+
+group = 'com.teamtreehouse'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.sql2o:sql2o:1.6.0'
+    implementation 'com.h2database:h2:2.2.220'
+    implementation 'org.xerial:sqlite-jdbc:3.42.0.1'
+    implementation 'com.sparkjava:spark-core:2.9.4'
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'ch.qos.logback:logback-classic:1.4.11'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+// Set the main class for the application plugin
+application {
+    mainClass = 'com.teamtreehouse.techdegrees.App'
+}
+
+
+
+
