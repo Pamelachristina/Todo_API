@@ -1,13 +1,11 @@
 'use strict';
 
 angular.module('todoListApp')
-    .factory('Todo', function($resource) {
-        return $resource('http://localhost:8081/api/v1/todos/:id',  // Changed /todo to /todos
-            { id: '@id' },
-            {
-                update: {
-                    method: 'PUT'
-                }
+    .factory('Todo', function($resource){
+        return $resource('http://127.0.0.1:8081/api/v1/todos/:id', {id: '@id'}, {
+            update: {
+                method: 'PUT'
             }
-        );
+        });
     });
+

@@ -5,41 +5,10 @@ import com.teamtreehouse.techdegrees.Todo;
 
 
 public interface TodoDAO {
-    /**
-     * Create a new Todo item.
-     *
-     * @param todo the Todo item to create
-     */
-    void create(Todo todo);
-
-    /**
-     * Retrieve all Todo items.
-     *
-     * @return a list of all Todo items
-     */
-    List<Todo> findAll();
-
-    /**
-     * Update an existing Todo item.
-     *
-     * @param todo the Todo item with updated values
-     */
-    void update(Todo todo);
-
-    /**
-     * Delete a Todo item by its ID.
-     *
-     * @param id the ID of the Todo item to delete
-     */
-    void delete(int id);
-
-    /**
-     * Find a Todo item by its ID.
-     *
-     * @param id the ID of the Todo item to find
-     * @return the Todo item, or null if not found
-     */
-
-     Todo findById(int id);
+    List<Todo> findAll(); // Fetch all todos
+    Todo findById(int id); // Fetch a single todo by ID
+    void create(Todo todo); // Create a new todo
+    void update(Todo todo); // Update an existing todo
+    void delete(int id); // Delete a todo by ID
+    void createTodosTable(); // Create the todos table
 }
-

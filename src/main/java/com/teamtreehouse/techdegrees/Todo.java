@@ -1,19 +1,17 @@
 package com.teamtreehouse.techdegrees;
 
+
 import com.google.gson.annotations.SerializedName;
 
 public class Todo {
     private int id;
     private String name;
+    @SerializedName("is_completed")
+    private boolean isCompleted;
 
-    @SerializedName("is_completed") // Match the database column name
-    private boolean isCompleted;  // Renamed to match database and Java conventions
 
-    // Default no-args constructor needed by Gson
-    public Todo() {
-    }
-
-    // Constructor
+    // Constructors
+    public Todo() {}
     public Todo(int id, String name, boolean isCompleted) {
         this.id = id;
         this.name = name;
@@ -37,21 +35,12 @@ public class Todo {
         this.name = name;
     }
 
-    // Use `getIsCompleted` to follow Java naming conventions and align with Gson serialization
-    public boolean getIsCompleted() {
+    public boolean isCompleted() {
         return isCompleted;
     }
 
-    public void setIsCompleted(boolean isCompleted) {
+    public void setCompleted(boolean isCompleted) {
         this.isCompleted = isCompleted;
     }
-
-    @Override
-    public String toString() {
-        return "Todo{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", isCompleted=" + isCompleted +
-                '}';
-    }
 }
+

@@ -1,171 +1,141 @@
 package com.teamtreehouse.techdegrees;
 
-import com.google.gson.Gson;
+import static spark.Spark.*;
 import com.teamtreehouse.techdegrees.dao.Sql2oTodoDAO;
 import com.teamtreehouse.techdegrees.dao.TodoDAO;
-import com.teamtreehouse.techdegrees.Todo;
+import com.google.gson.Gson;
 import org.sql2o.Sql2o;
-
 import java.util.List;
 
-import static spark.Spark.*;
-
 public class App {
-
     public static void main(String[] args) {
-        try {
-            System.out.println("Starting application...");
+        // Static file location must be first
+        staticFileLocation("/public");
+        System.out.println("Static file location set");
 
-            // Static file location must be first
-            staticFileLocation("/public");
-            System.out.println("Static file location set");
+        // Set port
+        port(8081);
+        System.out.println("Port set to 8081");
+        Sql2o sql2o = new Sql2o("jdbc:h2:~/test", "user", "password");
 
-            // Set port
-            port(8081);
-            System.out.println("Port set to 8081");
+        // Initialize DAO implementation
+        TodoDAO todoDAO = new Sql2oTodoDAO(sql2o); // Ensure the correct implementation is used
+        Gson gson = new Gson();
 
-            // Configure CORS
-            before((request, response) -> {
-                response.header("Access-Control-Allow-Origin", "*");
-                response.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-                response.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Content-Length, Accept, Origin");
-            });
-
-
-            options("/*", (request, response) -> {
-                String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
-                if (accessControlRequestHeaders != null) {
-                    response.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
-                }
-
-                String accessControlRequestMethod = request.headers("Access-Control-Request-Method");
-                if (accessControlRequestMethod != null) {
-                    response.header("Access-Control-Allow-Methods", accessControlRequestMethod);
-                }
-
-                return "OK";
-            });
-
-            // Initialize SQL2o and DAO
-            TodoDAO todoDAO;
-            Sql2o sql2o;
-
-            try {
-                System.out.println("Initializing database connection...");
-                sql2o = new Sql2o("jdbc:h2:mem:todoapp;INIT=RUNSCRIPT FROM 'classpath:db/init.sql'", "", "");
-                todoDAO = new Sql2oTodoDAO(sql2o);
-                System.out.println("Database connection established");
-            } catch (Exception e) {
-                System.err.println("Database initialization failed: " + e.getMessage());
-                e.printStackTrace();
-                throw e;
+        options("/*", (req, res) -> {
+            String accessControlRequestHeaders = req.headers("Access-Control-Request-Headers");
+            if (accessControlRequestHeaders != null) {
+                res.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
             }
 
-            // Initialize Gson for JSON handling
-            Gson gson = new Gson();
+            String accessControlRequestMethod = req.headers("Access-Control-Request-Method");
+            if (accessControlRequestMethod != null) {
+                res.header("Access-Control-Allow-Methods", accessControlRequestMethod);
+            }
 
-            // API Routes
-            path("/api/v1", () -> {
-                get("/todos", (req, res) -> {
-                    try {
-                        res.type("application/json");
-                        List<Todo> todos = todoDAO.findAll();
-                        System.out.println("Found todos: " + todos);
-                        return todos;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        System.err.println("Error getting todos: " + e.getMessage());
-                        throw e;
-                    }
-                }, gson::toJson);
+            return "OK";
+        });
 
-                get("/todos/:id", (req, res) -> {
-                    int id = Integer.parseInt(req.params("id"));
+        before((req, res) -> res.header("Access-Control-Allow-Origin", "*"));
+
+
+
+
+
+        // Ensure the todos table is created
+        todoDAO.createTodosTable();
+
+        // Base API path
+        path("/api/v1", () -> {
+            // POST /todos - Create a new todo
+            post("/todos", (req, res) -> {
+                res.type("application/json");
+                Todo todo = gson.fromJson(req.body(), Todo.class);
+                todoDAO.create(todo);
+                res.status(201); // Created
+                return todo;
+            }, gson::toJson);
+
+            // GET /todos - Fetch all todos
+            get("/todos", (req, res) -> {
+                res.type("application/json");
+                List<Todo> todos = todoDAO.findAll();
+                return todos;
+            }, gson::toJson);
+
+            // GET /todos/:id - Fetch a single todo by ID
+            get("/todos/:id", (req, res) -> {
+                res.type("application/json");
+                try {
+                    int id = Integer.parseInt(req.params(":id"));
                     Todo todo = todoDAO.findById(id);
                     if (todo == null) {
-                        res.status(404);
-                        return new ErrorResponse("Todo not found");
+                        res.status(404); // Not Found
+                        return new ErrorMessage("Todo not found");
                     }
-                    res.type("application/json");
                     return todo;
-                }, gson::toJson);
+                } catch (NumberFormatException e) {
+                    res.status(400); // Bad Request
+                    return new ErrorMessage("Invalid ID format");
+                }
+            }, gson::toJson);
 
-                post("/todos", (req, res) -> {
-                    try {
-                        System.out.println("Received POST request with body: " + req.body());
-                        Todo todo = gson.fromJson(req.body(), Todo.class);
-                        System.out.println("Created Todo object: " + todo);
-                        todoDAO.create(todo);
-                        res.status(201);
-                        res.type("application/json");
-                        return todo;
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        String errorMessage = "Error creating todo: " + e.getMessage() +
-                                "\nCause: " + (e.getCause() != null ? e.getCause().getMessage() : "unknown");
-                        System.err.println(errorMessage);
-                        throw e;
-                    }
-                }, gson::toJson);
-
-                put("/todos/:id", (req, res) -> {
-                    int id = Integer.parseInt(req.params("id"));
-                    Todo todoToUpdate = todoDAO.findById(id);
-                    if (todoToUpdate == null) {
-                        res.status(404);
-                        return new ErrorResponse("Todo not found");
+            // PUT /todos/:id - Update an existing todo
+            put("/todos/:id", (req, res) -> {
+                res.type("application/json");
+                try {
+                    int id = Integer.parseInt(req.params(":id"));
+                    Todo existingTodo = todoDAO.findById(id);
+                    if (existingTodo == null) {
+                        res.status(404); // Not Found
+                        return new ErrorMessage("Todo not found");
                     }
                     Todo updatedTodo = gson.fromJson(req.body(), Todo.class);
-                    updatedTodo.setId(id);
+                    updatedTodo.setId(id); // Ensure ID is set
                     todoDAO.update(updatedTodo);
-                    res.type("application/json");
                     return updatedTodo;
-                }, gson::toJson);
+                } catch (NumberFormatException e) {
+                    res.status(400); // Bad Request
+                    return new ErrorMessage("Invalid ID format");
+                }
+            }, gson::toJson);
 
-                delete("/todos/:id", (req, res) -> {
-                    int id = Integer.parseInt(req.params("id"));
-                    Todo todoToDelete = todoDAO.findById(id);
-                    if (todoToDelete == null) {
-                        res.status(404);
-                        return new ErrorResponse("Todo not found");
+            // DELETE /todos/:id - Delete a todo by ID
+            delete("/todos/:id", (req, res) -> {
+                res.type("application/json");
+                try {
+                    int id = Integer.parseInt(req.params(":id"));
+                    Todo todo = todoDAO.findById(id);
+                    if (todo == null) {
+                        res.status(404); // Not Found
+                        return new ErrorMessage("Todo not found");
                     }
                     todoDAO.delete(id);
-                    res.status(204);
+                    res.status(204); // No Content
                     return "";
-                });
+                } catch (NumberFormatException e) {
+                    res.status(400); // Bad Request
+                    return new ErrorMessage("Invalid ID format");
+                }
             });
+        });
 
-            // Exception Handling
-            exception(Exception.class, (e, req, res) -> {
-                res.status(500);
-                res.type("application/json");
-                res.body(gson.toJson(new ErrorResponse("An error occurred: " + e.getMessage())));
-            });
+        // Exception Handling
+        exception(Exception.class, (e, req, res) -> {
+            res.type("application/json");
+            res.status(500); // Internal Server Error
+            res.body(gson.toJson(new ErrorMessage(e.getMessage())));
+        });
 
-            // Not Found Handling
-            notFound((req, res) -> {
-                res.type("application/json");
-                return gson.toJson(new ErrorResponse("Route not found"));
-            });
+        // 404 Not Found
+        notFound((req, res) -> {
+            res.type("application/json");
+            return gson.toJson(new ErrorMessage("Route not found"));
+        });
 
-            System.out.println("Application started successfully!");
-        } catch (Exception e) {
-            System.err.println("Application failed to start: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
-    }
-
-    // Error Response Helper Class
-    static class ErrorResponse {
-        private final String message;
-
-        ErrorResponse(String message) {
-            this.message = message;
-        }
-
-        public String getMessage() {
-            return message;
-        }
+        // After-filters for consistent JSON response
+        after((req, res) -> {
+            res.type("application/json");
+        });
     }
 }

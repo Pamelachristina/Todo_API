@@ -3,26 +3,23 @@
 angular.module('todoListApp')
     .controller('todoCtrl', function($scope, Todo) {
         $scope.deleteTodo = function(todo, index) {
-            todo.$delete().then(function() {
-                $scope.todos.splice(index, 1);
-            });
+            $scope.todos.splice(index, 1);
+            todo.$delete();
         };
 
         $scope.saveTodos = function() {
-            var filteredTodos = $scope.todos.filter(function(todo) {
-                return todo.edited;
+            var filteredTodos = $scope.todos.filter(function(todo){
+                if(todo.edited) {
+                    return todo;
+                };
             });
-
             filteredTodos.forEach(function(todo) {
                 if (todo.id) {
-                    todo.$update().then(function() {
-                        todo.edited = false;
-                    });
+                    todo.$update();
                 } else {
-                    todo.$save().then(function() {
-                        todo.edited = false;
-                    });
+                    todo.$save();
                 }
+
             });
         };
     });
